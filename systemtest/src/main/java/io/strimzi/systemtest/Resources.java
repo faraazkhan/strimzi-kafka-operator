@@ -55,6 +55,7 @@ import io.strimzi.api.kafka.model.KafkaTopic;
 import io.strimzi.api.kafka.model.KafkaTopicBuilder;
 import io.strimzi.api.kafka.model.KafkaUser;
 import io.strimzi.api.kafka.model.KafkaUserBuilder;
+import io.strimzi.systemtest.utils.AvailabilityVerifier;
 import io.strimzi.systemtest.utils.StUtils;
 import io.strimzi.test.TestUtils;
 import org.apache.logging.log4j.LogManager;
@@ -255,6 +256,8 @@ public class Resources {
                             .withNewListeners()
                                 .withNewPlain().endPlain()
                                 .withNewTls().endTls()
+                                .withNewKafkaListenerExternalRoute()
+                                .endKafkaListenerExternalRoute()
                             .endListeners()
                             .withNewReadinessProbe()
                                 .withInitialDelaySeconds(15)
@@ -456,6 +459,21 @@ public class Resources {
         waitForStatefulSet(namespace, KafkaResources.zookeeperStatefulSetName(name));
         waitForStatefulSet(namespace, KafkaResources.kafkaStatefulSetName(name));
         waitForDeployment(namespace, KafkaResources.entityOperatorDeploymentName(name));
+
+        LOGGER.info(name);
+        LOGGER.info(namespace);
+
+        AvailabilityVerifier mp = new AvailabilityVerifier(client(), namespace, name);
+        mp.start();
+
+        try {
+            Thread.sleep(100000);
+            LOGGER.info(mp.stats().toString());
+            mp.stop(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         return kafka;
     }
 

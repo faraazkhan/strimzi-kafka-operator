@@ -63,6 +63,27 @@ public class AvailabilityVerifier {
     private volatile Result consumerStats;
     private long startTime;
 
+    public AvailabilityVerifier(KubernetesClient client, String namespace, String clusterName) {
+        producerProperties = new Properties();
+        producerProperties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                getExternalBootstrapConnect(client, namespace, clusterName));
+        producerProperties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
+        producerProperties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
+        producerProperties.setProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "1000");
+        producerProperties.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL);
+        producerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "init-producer");
+
+        consumerProperties = new Properties();
+        consumerProperties.setProperty(ConsumerConfig.GROUP_ID_CONFIG,
+                "my-group-" + new Random().nextInt(Integer.MAX_VALUE));
+        consumerProperties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                getExternalBootstrapConnect(client, namespace, clusterName));
+        consumerProperties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
+        consumerProperties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
+        consumerProperties.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL);
+        consumerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "init-consumer");
+    }
+
     public AvailabilityVerifier(KubernetesClient client, String namespace, String clusterName, String userName) {
         producerProperties = new Properties();
         producerProperties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
