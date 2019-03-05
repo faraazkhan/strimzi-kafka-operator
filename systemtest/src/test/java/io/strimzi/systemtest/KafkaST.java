@@ -379,7 +379,7 @@ class KafkaST extends AbstractST {
     @Tag(REGRESSION)
     void testSendMessagesPlainAnonymous() throws InterruptedException {
         String name = "send-messages-plain-anon";
-        int messagesCount = 20;
+        int messagesCount = 500;
         String topicName = TOPIC_NAME + "-" + rng.nextInt(Integer.MAX_VALUE);
 
         resources().kafkaEphemeral(CLUSTER_NAME, 3).done();

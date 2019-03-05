@@ -541,26 +541,26 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
     Job waitForJobSuccess(Job job) {
         // Wait for the job to succeed
         try {
-            LOGGER.debug("Waiting for Job completion: {}", job);
+            LOGGER.info("Waiting for Job completion: {}", job);
             waitFor("Job completion", GLOBAL_POLL_INTERVAL, GLOBAL_TIMEOUT, () -> {
                 Job jobs = namespacedClient().extensions().jobs().withName(job.getMetadata().getName()).get();
                 JobStatus status;
                 if (jobs == null || (status = jobs.getStatus()) == null) {
-                    LOGGER.debug("Poll job is null");
+                    LOGGER.info("Poll job is null");
                     return false;
                 } else {
                     if (status.getFailed() != null && status.getFailed() > 0) {
-                        LOGGER.debug("Poll job failed");
+                        LOGGER.info("Poll job failed");
                         fail();
                     } else if (status.getSucceeded() != null && status.getSucceeded() == 1) {
-                        LOGGER.debug("Poll job succeeded");
+                        LOGGER.info("Poll job succeeded");
                         return true;
                     } else if (status.getActive() != null && status.getActive() > 0) {
-                        LOGGER.debug("Poll job has active");
+                        LOGGER.info("Poll job has active");
                         return false;
                     }
                 }
-                LOGGER.debug("Poll job in indeterminate state");
+                LOGGER.info("Poll job in indeterminate state");
                 return false;
             });
             return job;
@@ -880,7 +880,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
         String connect = tlsListener ? KafkaResources.tlsBootstrapAddress(CLUSTER_NAME) : KafkaResources.plainBootstrapAddress(CLUSTER_NAME);
         ContainerBuilder cb = new ContainerBuilder()
                 .withName("ping")
-                .withImage(changeOrgAndTag("strimzi/test-client:latest-kafka-2.0.0"))
+                .withImage(changeOrgAndTag("strimzi/test-client:latest-kafka-2.1.1"))
                 .addNewEnv().withName("PRODUCER_OPTS").withValue(
                         "--broker-list " + connect + " " +
                                 "--topic " + topic + " " +

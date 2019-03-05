@@ -67,6 +67,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static io.strimzi.test.TestUtils.waitFor;
+
 public class Resources {
 
     private static final Logger LOGGER = LogManager.getLogger(Resources.class);
@@ -253,11 +255,13 @@ public class Resources {
                             .addToConfig("offsets.topic.replication.factor", Math.min(kafkaReplicas, 3))
                             .addToConfig("transaction.state.log.min.isr", Math.min(kafkaReplicas, 2))
                             .addToConfig("transaction.state.log.replication.factor", Math.min(kafkaReplicas, 3))
+                            .addToConfig("default.replication.factor", 3)
                             .withNewListeners()
                                 .withNewPlain().endPlain()
                                 .withNewTls().endTls()
-                                .withNewKafkaListenerExternalRoute()
-                                .endKafkaListenerExternalRoute()
+                                .withNewKafkaListenerExternalLoadBalancer()
+                                    .withTls(false)
+                                .endKafkaListenerExternalLoadBalancer()
                             .endListeners()
                             .withNewReadinessProbe()
                                 .withInitialDelaySeconds(15)
@@ -273,6 +277,9 @@ public class Resources {
                                 .endRequests()
                             .endResources()
                             .withMetrics(new HashMap<>())
+                            .withNewJvmOptions()
+                            .withGcLoggingEnabled(false)
+                            .endJvmOptions()
                         .endKafka()
                         .withNewZookeeper()
                             .withReplicas(3)
@@ -291,6 +298,9 @@ public class Resources {
                 .withTimeoutSeconds(5)
                 .endLivenessProbe()
                             .withNewEphemeralStorage().endEphemeralStorage()
+                            .withNewJvmOptions()
+                            .withGcLoggingEnabled(false)
+                            .endJvmOptions()
                         .endZookeeper()
                         .withNewEntityOperator()
                             .withNewTopicOperator().withImage(TestUtils.changeOrgAndTag("strimzi/topic-operator:latest")).endTopicOperator()
@@ -460,16 +470,20 @@ public class Resources {
         waitForStatefulSet(namespace, KafkaResources.kafkaStatefulSetName(name));
         waitForDeployment(namespace, KafkaResources.entityOperatorDeploymentName(name));
 
-        LOGGER.info(name);
-        LOGGER.info(namespace);
-
         AvailabilityVerifier mp = new AvailabilityVerifier(client(), namespace, name);
         mp.start();
 
+        TestUtils.waitFor("Some messages sent received", 1_000, 300000,
+                () -> {
+                    AvailabilityVerifier.Result stats = mp.stats();
+                    LOGGER.info("{}", stats);
+                    return stats.sent() > 100;
+//                            && stats.received() > 0;
+                });
+
         try {
-            Thread.sleep(100000);
             LOGGER.info(mp.stats().toString());
-            mp.stop(10000);
+            mp.stop(20000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
