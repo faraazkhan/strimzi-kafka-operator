@@ -232,8 +232,8 @@ public class Resources {
     }
 
     void deleteResources() {
-        for (Runnable resource : resources) {
-            resource.run();
+        for (int i = resources.size() - 1; i >= 0; i--) {
+            resources.get(i).run();
         }
     }
 
@@ -551,7 +551,7 @@ public class Resources {
     private void waitForPodDeletion(String namespace, String name) {
         LOGGER.info("Waiting when Pod {} will be deleted", name);
 
-        TestUtils.waitFor("statefulset " + name, POLL_INTERVAL_FOR_RESOURCE_READINESS, TIMEOUT_FOR_RESOURCE_READINESS,
+        TestUtils.waitFor("pod " + name, POLL_INTERVAL_FOR_RESOURCE_READINESS, TIMEOUT_FOR_RESOURCE_READINESS,
             () -> client().pods().inNamespace(namespace).withName(name).get() == null);
     }
 
