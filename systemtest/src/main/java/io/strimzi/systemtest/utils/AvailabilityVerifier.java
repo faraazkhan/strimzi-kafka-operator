@@ -4,6 +4,7 @@
  */
 package io.strimzi.systemtest.utils;
 
+import com.sun.org.apache.regexp.internal.recompile;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
@@ -59,6 +60,7 @@ public class AvailabilityVerifier {
     private KafkaConsumer<Long, Long> consumer;
     private Thread receiver;
 
+    private volatile boolean senderRunning = false;
     private volatile boolean go = false;
     private volatile Result producerStats = null;
     private volatile Result consumerStats;
@@ -125,6 +127,7 @@ public class AvailabilityVerifier {
         producerProperties.setProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "1000");
         producerProperties.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
         producerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, userName + "-producer");
+        producerProperties.put(ProducerConfig.ACKS_CONFIG, "all");
 
         consumerProperties = new Properties();
         consumerProperties.setProperty(ConsumerConfig.GROUP_ID_CONFIG,
@@ -270,6 +273,7 @@ public class AvailabilityVerifier {
             throw new IllegalStateException();
         }
         go = true;
+        senderRunning = true;
         double targetRate = 50;
         this.producer = new KafkaProducer<>(producerProperties);
         this.sender = new Thread(() -> {
@@ -313,15 +317,21 @@ public class AvailabilityVerifier {
             long received = 0;
             long maxLatencyNs = 0;
             consumer.subscribe(Collections.singleton("my-topic"));
-            while (go) {
+            while (senderRunning) {
                 try {
                     ConsumerRecords<Long, Long> records = consumer.poll(Duration.ofSeconds(1));
+                    LOGGER.info(records.count());
                     long t0 = System.nanoTime();
                     received += records.count();
                     LOGGER.info("received: {}", received);
                     for (ConsumerRecord<Long, Long> record : records) {
                         long msgId = record.key();
                         maxLatencyNs = Math.max(maxLatencyNs, t0 - record.value());
+                    }
+                    if (!go) {
+                        if (stats().received == stats().sent()) {
+                            this.senderRunning = false;
+                        }
                     }
                 } catch (Exception e) {
                     incrementErrCount(e, consumerErrors);
@@ -438,17 +448,16 @@ public class AvailabilityVerifier {
         producer.close(timeoutLeft(timeoutMs, t0), TimeUnit.MILLISECONDS);
         LOGGER.info("Producer closed");
 
+        TestUtils.waitFor("Test", 1000, 300000,
+            () -> {
+                Result result = stats();
+                LOGGER.info("{}-{}", result.received, result.sent);
+                return result.received > 500;
+            });
+
         this.receiver.join(timeoutLeft(timeoutMs, t0));
         LOGGER.info("Receiver joined");
         this.receiver = null;
-
-        TestUtils.waitFor("Test", 1000, 300000,
-                () -> {
-                    Result result = stats();
-                    LOGGER.info("{}-{}", result.received, result.sent);
-                    return result.received == result.sent;
-                });
-
 
         consumer.close(Duration.ofMillis(timeoutLeft(timeoutMs, t0)));
         LOGGER.info("Consumer closed");

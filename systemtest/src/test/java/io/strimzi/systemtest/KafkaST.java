@@ -516,7 +516,7 @@ class KafkaST extends AbstractST {
         Map<String, String> jvmOptionsXX = new HashMap<>();
         jvmOptionsXX.put("UseG1GC", "true");
 
-        resources().kafkaEphemeral(CLUSTER_NAME, 1)
+        resources().kafkaEphemeral(CLUSTER_NAME, 3)
             .editSpec()
                 .editKafka()
                     .withNewResources()

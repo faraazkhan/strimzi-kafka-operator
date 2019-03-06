@@ -67,6 +67,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static io.strimzi.systemtest.AbstractST.GLOBAL_POLL_INTERVAL;
 import static io.strimzi.test.TestUtils.waitFor;
 
 public class Resources {
@@ -260,7 +261,7 @@ public class Resources {
                                 .withNewPlain().endPlain()
                                 .withNewTls().endTls()
                                 .withNewKafkaListenerExternalLoadBalancer()
-                                    .withTls(false)
+//                                    .withTls(false)
                                 .endKafkaListenerExternalLoadBalancer()
                             .endListeners()
                             .withNewReadinessProbe()
@@ -470,16 +471,23 @@ public class Resources {
         waitForStatefulSet(namespace, KafkaResources.kafkaStatefulSetName(name));
         waitForDeployment(namespace, KafkaResources.entityOperatorDeploymentName(name));
 
-        AvailabilityVerifier mp = new AvailabilityVerifier(client(), namespace, name);
+        String userName = "pepa";
+        tlsUser(name, userName).done();
+        topic(name, "my-topic").done();
+
+        TestUtils.waitFor("Wait for secrets became available", GLOBAL_POLL_INTERVAL, 60000,
+                () -> client.secrets().inNamespace(namespace).withName(userName).get() != null,
+                () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(namespace).list().getItems()));
+
+        AvailabilityVerifier mp = new AvailabilityVerifier(client(), namespace, name, userName);
         mp.start();
 
         TestUtils.waitFor("Some messages sent received", 1_000, 300000,
-                () -> {
-                    AvailabilityVerifier.Result stats = mp.stats();
-                    LOGGER.info("{}", stats);
-                    return stats.sent() > 100;
-//                            && stats.received() > 0;
-                });
+            () -> {
+                AvailabilityVerifier.Result stats = mp.stats();
+                LOGGER.info("{}", stats);
+                return stats.received() > 10 && stats.sent() > 500;
+            });
 
         try {
             LOGGER.info(mp.stats().toString());
