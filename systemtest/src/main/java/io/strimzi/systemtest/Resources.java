@@ -476,8 +476,8 @@ public class Resources {
         topic(name, "my-topic").done();
 
         TestUtils.waitFor("Wait for secrets became available", GLOBAL_POLL_INTERVAL, 60000,
-                () -> client.secrets().inNamespace(namespace).withName(userName).get() != null,
-                () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(namespace).list().getItems()));
+            () -> client.secrets().inNamespace(namespace).withName(userName).get() != null,
+            () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(namespace).list().getItems()));
 
         try {
             AvailabilityVerifier.Result result = waitForInitialAvailability(name, namespace, userName);
