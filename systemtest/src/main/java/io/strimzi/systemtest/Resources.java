@@ -232,7 +232,7 @@ public class Resources {
     }
 
     Job deleteLater(Job resource) {
-        return deleteLater(client().extensions().jobs(), resource);
+        return deleteLater(client().batch().jobs(), resource);
     }
 
     void deleteResources() {

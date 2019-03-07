@@ -386,10 +386,15 @@ class KafkaST extends AbstractST {
         resources().topic(CLUSTER_NAME, topicName).done();
 
         // Create ping job
-        Job job = waitForJobSuccess(pingJob(name, topicName, messagesCount, null, false));
+        Job sendJob = waitForJobSuccess(sendRecordsToClusterJob(CLUSTER_NAME, "send-messages-job", TOPIC_NAME, messagesCount, null, false));
+        Job receiveJob = waitForJobSuccess(readMessagesFromClusterJob(CLUSTER_NAME, "receive-messages-job", TOPIC_NAME, messagesCount, null, false));
+
+
+//        Job job = waitForJobSuccess(pingJob(name, topicName, messagesCount, null, false));
 
         // Now get the pod logs (which will be both producer and consumer logs)
-        checkPings(messagesCount, job);
+//        checkPings(messagesCount, job);
+        checkRecordsForConsumer(messagesCount, receiveJob);
     }
 
     /**

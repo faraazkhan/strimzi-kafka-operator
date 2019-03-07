@@ -543,7 +543,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
         try {
             LOGGER.info("Waiting for Job completion: {}", job);
             waitFor("Job completion", GLOBAL_POLL_INTERVAL, GLOBAL_TIMEOUT, () -> {
-                Job jobs = namespacedClient().extensions().jobs().withName(job.getMetadata().getName()).get();
+                Job jobs = namespacedClient().batch().jobs().withName(job.getMetadata().getName()).get();
                 JobStatus status;
                 if (jobs == null || (status = jobs.getStatus()) == null) {
                     LOGGER.info("Poll job is null");
@@ -567,7 +567,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
         } catch (TimeoutException e) {
             LOGGER.info("Original Job: {}", job);
             try {
-                LOGGER.info("Job: {}", indent(toYamlString(namespacedClient().extensions().jobs().withName(job.getMetadata().getName()).get())));
+                LOGGER.info("Job: {}", indent(toYamlString(namespacedClient().batch().jobs().withName(job.getMetadata().getName()).get())));
             } catch (Exception | AssertionError t) {
                 LOGGER.info("Job not available: {}", t.getMessage());
             }
@@ -692,7 +692,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
 
         ContainerBuilder cb = new ContainerBuilder()
                 .withName("send-records")
-                .withImage(changeOrgAndTag("strimzi/test-client:latest"))
+                .withImage(changeOrgAndTag("strimzi/test-client:latest-kafka-2.1.1"))
                 .addNewEnv().withName("PRODUCER_OPTS").withValue(
                         "--broker-list " + connect + " " +
                                 "--topic " + topic + " " +
@@ -701,7 +701,8 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
 
         PodSpec producerPodSpec = createPodSpecForProducer(cb, kafkaUser, tlsListener, bootstrapServer).build();
 
-        Job job = resources().deleteLater(namespacedClient().extensions().jobs().create(new JobBuilder()
+
+        Job job = resources().deleteLater(namespacedClient().batch().jobs().create(new JobBuilder()
                 .withNewMetadata()
                 .withName(name)
                 .endMetadata()
@@ -806,7 +807,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
         String connect = tlsListener ? bootstrapServer + "-kafka-bootstrap:9093" : bootstrapServer + "-kafka-bootstrap:9092";
         ContainerBuilder cb = new ContainerBuilder()
                 .withName("read-messages")
-                .withImage(changeOrgAndTag("strimzi/test-client:latest"))
+                .withImage(changeOrgAndTag("strimzi/test-client:latest-kafka-2.1.1"))
                 .addNewEnv().withName("CONSUMER_OPTS").withValue(
                         "--broker-list " + connect + " " +
                                 "--group-id " + name + "-" + "my-group" + " " +
@@ -818,7 +819,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
 
         PodSpec consumerPodSpec = createPodSpecForConsumer(cb, kafkaUser, tlsListener, bootstrapServer).build();
 
-        Job job = resources().deleteLater(namespacedClient().extensions().jobs().create(new JobBuilder()
+        Job job = resources().deleteLater(namespacedClient().batch().jobs().create(new JobBuilder()
             .withNewMetadata()
                 .withName(name)
             .endMetadata()
@@ -986,7 +987,7 @@ public abstract class AbstractST extends BaseITST implements TestSeparator {
                     .endVolume();
         }
 
-        Job job = resources().deleteLater(namespacedClient().extensions().jobs().create(new JobBuilder()
+        Job job = resources().deleteLater(namespacedClient().batch().jobs().create(new JobBuilder()
                 .withNewMetadata()
                 .withName(name)
                 .endMetadata()
