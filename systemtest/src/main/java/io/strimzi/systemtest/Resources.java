@@ -479,24 +479,28 @@ public class Resources {
                 () -> client.secrets().inNamespace(namespace).withName(userName).get() != null,
                 () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(namespace).list().getItems()));
 
-        AvailabilityVerifier mp = new AvailabilityVerifier(client(), namespace, name, userName);
-        mp.start();
-
-        TestUtils.waitFor("Some messages sent received", 1_000, 300000,
-            () -> {
-                AvailabilityVerifier.Result stats = mp.stats();
-                LOGGER.info("{}", stats);
-                return stats.received() > 10 && stats.sent() > 500;
-            });
-
         try {
-            LOGGER.info(mp.stats().toString());
-            mp.stop(20000);
+            AvailabilityVerifier.Result result = waitForInitialAvailability(name, namespace, userName);
+            LOGGER.info("Availability results: {}", result.toString());
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
         return kafka;
+    }
+
+    private AvailabilityVerifier.Result waitForInitialAvailability(String clusterName, String namespace, String userName) throws InterruptedException {
+        AvailabilityVerifier mp = new AvailabilityVerifier(client(), namespace, clusterName, userName);
+        mp.start();
+
+        TestUtils.waitFor("Some messages sent received", 1_000, 60_000,
+            () -> {
+                AvailabilityVerifier.Result stats = mp.stats();
+                LOGGER.info("{}", stats);
+                return stats.sent() > 0
+                        && stats.received() > 0;
+            });
+        return mp.stop(20000);
     }
 
     KafkaConnect waitFor(KafkaConnect kafkaConnect) {

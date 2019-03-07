@@ -60,7 +60,6 @@ public class AvailabilityVerifier {
     private KafkaConsumer<Long, Long> consumer;
     private Thread receiver;
 
-    private volatile boolean senderRunning = false;
     private volatile boolean go = false;
     private volatile Result producerStats = null;
     private volatile Result consumerStats;
@@ -138,6 +137,7 @@ public class AvailabilityVerifier {
         consumerProperties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
         consumerProperties.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
         consumerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, userName + "-consumer");
+        consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         try {
             String tsPassword = "foo";
@@ -273,7 +273,6 @@ public class AvailabilityVerifier {
             throw new IllegalStateException();
         }
         go = true;
-        senderRunning = true;
         double targetRate = 50;
         this.producer = new KafkaProducer<>(producerProperties);
         this.sender = new Thread(() -> {
@@ -317,7 +316,7 @@ public class AvailabilityVerifier {
             long received = 0;
             long maxLatencyNs = 0;
             consumer.subscribe(Collections.singleton("my-topic"));
-            while (senderRunning) {
+            while (go) {
                 try {
                     ConsumerRecords<Long, Long> records = consumer.poll(Duration.ofSeconds(1));
                     LOGGER.info(records.count());
@@ -327,11 +326,6 @@ public class AvailabilityVerifier {
                     for (ConsumerRecord<Long, Long> record : records) {
                         long msgId = record.key();
                         maxLatencyNs = Math.max(maxLatencyNs, t0 - record.value());
-                    }
-                    if (!go) {
-                        if (stats().received == stats().sent()) {
-                            this.senderRunning = false;
-                        }
                     }
                 } catch (Exception e) {
                     incrementErrCount(e, consumerErrors);
@@ -447,13 +441,6 @@ public class AvailabilityVerifier {
         this.sender = null;
         producer.close(timeoutLeft(timeoutMs, t0), TimeUnit.MILLISECONDS);
         LOGGER.info("Producer closed");
-
-        TestUtils.waitFor("Test", 1000, 300000,
-            () -> {
-                Result result = stats();
-                LOGGER.info("{}-{}", result.received, result.sent);
-                return result.received > 500;
-            });
 
         this.receiver.join(timeoutLeft(timeoutMs, t0));
         LOGGER.info("Receiver joined");
