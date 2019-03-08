@@ -23,6 +23,7 @@ import io.fabric8.kubernetes.api.model.rbac.KubernetesRoleRefBuilder;
 import io.fabric8.kubernetes.api.model.rbac.KubernetesSubject;
 import io.fabric8.kubernetes.api.model.rbac.KubernetesSubjectBuilder;
 import io.strimzi.api.kafka.model.Kafka;
+import io.strimzi.api.kafka.model.KafkaClusterSpec;
 import io.strimzi.api.kafka.model.TlsSidecar;
 import io.strimzi.api.kafka.model.TopicOperatorSpec;
 import io.strimzi.operator.common.Annotations;
@@ -82,6 +83,7 @@ public class TopicOperator extends AbstractModel {
     private int topicMetadataMaxAttempts;
 
     private TlsSidecar tlsSidecar;
+    private String tlsSidecarImage;
 
     /**
      * @param namespace Kubernetes/OpenShift namespace where cluster resources are going to be created
@@ -209,7 +211,7 @@ public class TopicOperator extends AbstractModel {
      * @param kafkaAssembly desired resource with cluster configuration containing the topic operator one
      * @return Topic Operator instance, null if not configured in the ConfigMap
      */
-    public static TopicOperator fromCrd(Kafka kafkaAssembly) {
+    public static TopicOperator fromCrd(Kafka kafkaAssembly, KafkaVersion.Lookup versions) {
         TopicOperator result;
         if (kafkaAssembly.getSpec().getTopicOperator() != null) {
             String namespace = kafkaAssembly.getMetadata().getNamespace();
@@ -230,6 +232,13 @@ public class TopicOperator extends AbstractModel {
             result.setResources(tcConfig.getResources());
             result.setUserAffinity(tcConfig.getAffinity());
             result.setTlsSidecar(tcConfig.getTlsSidecar());
+
+            KafkaClusterSpec kafkaClusterSpec = kafkaAssembly.getSpec().getKafka();
+            String tlsSidecarImage = versions.kafkaImage(kafkaClusterSpec.getImage(), kafkaClusterSpec.getVersion());
+            if (tlsSidecarImage == null) {
+                throw new InvalidResourceException("Version " + kafkaClusterSpec.getVersion() + " is not supported. Supported versions are: " + String.join(", ", versions.supportedVersions()) + ".");
+            }
+            result.tlsSidecarImage = tlsSidecarImage;
         } else {
             result = null;
         }
@@ -266,11 +275,6 @@ public class TopicOperator extends AbstractModel {
                 .withVolumeMounts(getVolumeMounts())
                 .withImagePullPolicy(determineImagePullPolicy(imagePullPolicy, getImage()))
                 .build();
-
-        String tlsSidecarImage = TopicOperatorSpec.DEFAULT_TLS_SIDECAR_IMAGE;
-        if (tlsSidecar != null && tlsSidecar.getImage() != null) {
-            tlsSidecarImage = tlsSidecar.getImage();
-        }
 
         Container tlsSidecarContainer = new ContainerBuilder()
                 .withName(TLS_SIDECAR_NAME)
