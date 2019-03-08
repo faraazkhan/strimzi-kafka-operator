@@ -4,9 +4,9 @@
  */
 package io.strimzi.operator.common.operator.resource;
 
-import io.fabric8.kubernetes.api.model.rbac.DoneableKubernetesClusterRoleBinding;
-import io.fabric8.kubernetes.api.model.rbac.KubernetesClusterRoleBinding;
-import io.fabric8.kubernetes.api.model.rbac.KubernetesClusterRoleBindingList;
+import io.fabric8.kubernetes.api.model.rbac.ClusterRoleBinding;
+import io.fabric8.kubernetes.api.model.rbac.ClusterRoleBindingList;
+import io.fabric8.kubernetes.api.model.rbac.DoneableClusterRoleBinding;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -14,8 +14,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 public class ClusterRoleBindingOperator extends AbstractNonNamespacedResourceOperator<KubernetesClient,
-        KubernetesClusterRoleBinding, KubernetesClusterRoleBindingList, DoneableKubernetesClusterRoleBinding,
-        Resource<KubernetesClusterRoleBinding, DoneableKubernetesClusterRoleBinding>> {
+        ClusterRoleBinding, ClusterRoleBindingList, DoneableClusterRoleBinding,
+        Resource<ClusterRoleBinding, DoneableClusterRoleBinding>> {
 
     /**
      * Constructor
@@ -28,16 +28,15 @@ public class ClusterRoleBindingOperator extends AbstractNonNamespacedResourceOpe
     }
 
     @Override
-    protected MixedOperation<KubernetesClusterRoleBinding, KubernetesClusterRoleBindingList,
-            DoneableKubernetesClusterRoleBinding, Resource<KubernetesClusterRoleBinding,
-            DoneableKubernetesClusterRoleBinding>> operation() {
-        return client.rbac().kubernetesClusterRoleBindings();
+    protected MixedOperation<ClusterRoleBinding, ClusterRoleBindingList,
+            DoneableClusterRoleBinding, Resource<ClusterRoleBinding,
+            DoneableClusterRoleBinding>> operation() {
+        return client.rbac().clusterRoleBindings();
     }
 
     @Override
-    protected Future<ReconcileResult<KubernetesClusterRoleBinding>> internalPatch(String name,
-                                                                                  KubernetesClusterRoleBinding current,
-                                                                                  KubernetesClusterRoleBinding desired) {
+    protected Future<ReconcileResult<ClusterRoleBinding>> internalPatch(String name, ClusterRoleBinding current,
+                                                                                  ClusterRoleBinding desired) {
         return Future.succeededFuture(ReconcileResult.noop(current));
     }
 }
