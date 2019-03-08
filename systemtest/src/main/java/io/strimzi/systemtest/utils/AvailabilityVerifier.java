@@ -63,58 +63,6 @@ public class AvailabilityVerifier {
     private volatile Result consumerStats;
     private long startTime;
 
-    public AvailabilityVerifier(KubernetesClient client, String namespace, String clusterName) {
-        producerProperties = new Properties();
-        producerProperties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                getExternalBootstrapConnect(client, namespace, clusterName));
-        producerProperties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
-        producerProperties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName());
-        producerProperties.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL);
-        producerProperties.setProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "1000");
-        producerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "init-producer");
-
-        consumerProperties = new Properties();
-        consumerProperties.setProperty(ConsumerConfig.GROUP_ID_CONFIG,
-                "my-group-" + new Random().nextInt(Integer.MAX_VALUE));
-        consumerProperties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                getExternalBootstrapConnect(client, namespace, clusterName));
-        consumerProperties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
-        consumerProperties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
-        consumerProperties.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL);
-        consumerProperties.setProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "init-consumer");
-
-        try {
-            String tsPassword = "foo";
-            File tsFile = File.createTempFile(getClass().getName(), ".truststore");
-            tsFile.deleteOnExit();
-            KeyStore ts = KeyStore.getInstance(KeyStore.getDefaultType());
-            ts.load(null, tsPassword.toCharArray());
-            CertificateFactory cf = CertificateFactory.getInstance("X.509");
-            for (Map.Entry<String, String> entry : client.secrets().inNamespace(namespace).withName(KafkaResources.clusterCaCertificateSecretName(clusterName)).get().getData().entrySet()) {
-                String clusterCaCert = entry.getValue();
-                Certificate cert = cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(clusterCaCert)));
-                ts.setCertificateEntry(entry.getKey(), cert);
-            }
-            FileOutputStream tsOs = new FileOutputStream(tsFile);
-            try {
-                ts.store(tsOs, tsPassword.toCharArray());
-            } finally {
-                tsOs.close();
-            }
-            producerProperties.setProperty(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, KeyStore.getDefaultType());
-            consumerProperties.setProperty(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, KeyStore.getDefaultType());
-            producerProperties.setProperty(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, tsPassword);
-            consumerProperties.setProperty(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, tsPassword);
-            producerProperties.setProperty(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, tsFile.getAbsolutePath());
-            consumerProperties.setProperty(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, tsFile.getAbsolutePath());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-
-
     public AvailabilityVerifier(KubernetesClient client, String namespace, String clusterName, String userName) {
         producerProperties = new Properties();
         producerProperties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -288,7 +236,6 @@ public class AvailabilityVerifier {
                     });
                     sent++;
                     sent0++;
-                    LOGGER.info("sent: {}-{}", sent, sent0);
                 } catch (Exception e) {
                     incrementErrCount(e, producerErrors);
                 }
@@ -320,7 +267,6 @@ public class AvailabilityVerifier {
                     LOGGER.info(records.count());
                     long t0 = System.nanoTime();
                     received += records.count();
-                    LOGGER.info("received: {}", received);
                     for (ConsumerRecord<Long, Long> record : records) {
                         long msgId = record.key();
                         maxLatencyNs = Math.max(maxLatencyNs, t0 - record.value());
@@ -426,7 +372,6 @@ public class AvailabilityVerifier {
      * @throws TimeoutException
      */
     public Result stop(long timeoutMs) throws InterruptedException {
-        LOGGER.info("Invoke stop");
         long t0 = System.nanoTime();
         if (!go) {
             throw new IllegalStateException();
@@ -435,17 +380,13 @@ public class AvailabilityVerifier {
 
         this.go = false;
         this.sender.join(timeoutLeft(timeoutMs, t0));
-        LOGGER.info("Sender joined");
         this.sender = null;
         producer.close(timeoutLeft(timeoutMs, t0), TimeUnit.MILLISECONDS);
-        LOGGER.info("Producer closed");
 
         this.receiver.join(timeoutLeft(timeoutMs, t0));
-        LOGGER.info("Receiver joined");
         this.receiver = null;
 
         consumer.close(Duration.ofMillis(timeoutLeft(timeoutMs, t0)));
-        LOGGER.info("Consumer closed");
         return results;
     }
 
