@@ -12,6 +12,7 @@
 
     <properties>
         <skipTests>true</skipTests>
+        <guava.version>25.0-jre</guava.version>
     </properties>
 
     <dependencies>
@@ -104,6 +105,25 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web-client</artifactId>
+            <version>${vertx.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web-common</artifactId>
+            <version>${vertx.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>${vertx.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

@@ -5,7 +5,7 @@ ENV STRIMZI_VERSION ${strimzi_version}
 
 # copy scripts for starting Kafka
 COPY ./scripts/ $KAFKA_HOME
-ADD test-client/target/test-client-${VERSION}.jar /test-client.jar
+ADD target/test-client-${STRIMZI_VERSION}.jar /test-client.jar
 
 USER 1001
 

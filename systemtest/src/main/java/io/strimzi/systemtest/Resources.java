@@ -67,8 +67,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static io.strimzi.systemtest.AbstractST.GLOBAL_POLL_INTERVAL;
-
 public class Resources {
 
     private static final Logger LOGGER = LogManager.getLogger(Resources.class);
@@ -470,20 +468,23 @@ public class Resources {
         waitForStatefulSet(namespace, KafkaResources.kafkaStatefulSetName(name));
         waitForDeployment(namespace, KafkaResources.entityOperatorDeploymentName(name));
 
-        String userName = "pepa";
-        tlsUser(name, userName).done();
-        topic(name, "my-topic").done();
-
-        TestUtils.waitFor("Wait for secrets became available", GLOBAL_POLL_INTERVAL, 60000,
-            () -> client.secrets().inNamespace(namespace).withName(userName).get() != null,
-            () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(namespace).list().getItems()));
-
-        try {
-            AvailabilityVerifier.Result result = waitForInitialAvailability(name, namespace, userName);
-            LOGGER.info("Availability results: {}", result.toString());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        /**
+         * Availability check after kafka creation
+         */
+//        String userName = "pepa";
+//        tlsUser(name, userName).done();
+//        topic(name, "my-topic").done();
+//
+//        TestUtils.waitFor("Wait for secrets became available", GLOBAL_POLL_INTERVAL, 60000,
+//            () -> client.secrets().inNamespace(namespace).withName(userName).get() != null,
+//            () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(namespace).list().getItems()));
+//
+//        try {
+//            AvailabilityVerifier.Result result = waitForInitialAvailability(name, namespace, userName);
+//            LOGGER.info("Availability results: {}", result.toString());
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
 
         return kafka;
     }
